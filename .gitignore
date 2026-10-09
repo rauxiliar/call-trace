@@ -1,0 +1,7 @@
+.DS_Store
+.env
+config/clouds.yaml
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc

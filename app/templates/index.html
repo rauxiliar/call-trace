@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Correlação CDR</title>
+  <style>
+    :root { color-scheme: light dark; }
+    html, body { max-width: 100%; overflow-x: clip; }
+    body {
+      margin: 0;
+      font: 15px/1.4 system-ui, sans-serif;
+      background: #f6f7f9;
+      color: #1c1f24;
+    }
+    main { box-sizing: border-box; max-width: min(1400px, 100%); margin: 0 auto; padding: 24px 20px 48px; min-width: 0; }
+    h1 { font-size: 1.35rem; margin: 0 0 4px; }
+    .lead { margin: 0 0 20px; color: #4b5563; }
+    form.search {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-width: 100%;
+      min-width: 0;
+      padding: 16px;
+      background: #fff;
+      border: 1px solid #e2e5ea;
+      border-radius: 8px;
+    }
+    .grid {
+      display: grid;
+      gap: 12px 14px;
+      align-items: end;
+    }
+    .where { grid-template-columns: minmax(10rem, 0.7fr) minmax(0, 1.3fr) minmax(0, 1fr); }
+    .when { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .who { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .who .wide { grid-column: span 2; }
+    .leg-detail {
+      border-top: 1px solid #e2e5ea;
+      padding: 12px 14px 16px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .detail-block h3 { margin: 0 0 8px; font-size: 13px; }
+    .detail-block table { table-layout: fixed; width: 100%; font: 13px/1.4 system-ui, sans-serif; }
+    .detail-block col.key { width: 30%; }
+    .detail-block.vars td:first-child { font-weight: 600; }
+    .detail-scroll { max-height: 36vh; overflow-x: hidden; overflow-y: auto; }
+    .leg-detail .muted { overflow-wrap: anywhere; }
+    .detail-block th, .detail-block td {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .actions { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
+    a.reset {
+      padding: 7px 18px;
+      border: 1px solid #c5cad3;
+      border-radius: 6px;
+      color: inherit;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .pager { display: flex; gap: 8px; align-items: center; margin: 16px 0; }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    input, select {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+      font: 15px/1.4 system-ui, sans-serif;
+      font-weight: 400;
+      padding: 6px 8px;
+      border: 1px solid #c5cad3;
+      border-radius: 6px;
+      background: #fff;
+      color: inherit;
+    }
+    button {
+      font: inherit;
+      padding: 7px 18px;
+      border: 0;
+      border-radius: 6px;
+      background: #1d4e89;
+      color: #fff;
+      cursor: pointer;
+    }
+    button.ghost {
+      background: transparent;
+      color: #1d4e89;
+      border: 1px solid #1d4e89;
+      padding: 3px 8px;
+    }
+    [hidden] { display: none !important; }
+    @media (max-width: 900px) {
+      .when, .who { grid-template-columns: 1fr 1fr; }
+      .detail-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .where, .when, .who { grid-template-columns: 1fr; }
+      .who .wide { grid-column: auto; }
+    }
+    .banner, .error, .notice {
+      margin: 16px 0 0;
+      padding: 10px 12px;
+      border-radius: 6px;
+    }
+    .banner { background: #fff6e5; border: 1px solid #e6c98a; }
+    .error { background: #fdecec; border: 1px solid #e7b4b4; }
+    .notice { background: #eef3f8; border: 1px solid #d5dee8; }
+    .results {
+      margin-top: 16px;
+      max-width: 100%;
+      overflow-x: clip;
+      background: #fff;
+      border: 1px solid #e2e5ea;
+      border-radius: 8px;
+    }
+    .results table { table-layout: fixed; }
+    .results th, .results td { white-space: normal; overflow-wrap: anywhere; }
+    .results h2 { margin: 0; padding: 12px 14px; font-size: 1rem; font-weight: 600; }
+    .results thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody.call tr.group td {
+      background: #e7eef8;
+      border-top: 12px solid #f6f7f9;
+      font-weight: 600;
+    }
+    tbody.call:first-of-type tr.group td { border-top-width: 0; }
+    tbody.call td:first-child { box-shadow: inset 3px 0 0 #1d4e89; }
+    tbody.call tr.leg td:first-child { padding-left: 18px; }
+    tr.detail-row td { background: #f8fafc; white-space: normal; }
+    tr.leg { cursor: pointer; }
+    tr.leg:hover td { background: #eef3f8; }
+    tr.leg.is-selected td { background: #e4eef8; }
+    a.go {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    a.go.o11y { background: #1d4e89; color: #fff; }
+    .group-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .group-actions {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      align-items: center;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .related-status { white-space: nowrap; font-weight: 400; }
+    .related-status:empty { display: none; }
+    .results td.leg-actions { overflow-wrap: break-word; }
+    button.related {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      background: #5c3d8f;
+      white-space: nowrap;
+    }
+    button.related:disabled { cursor: default; opacity: 0.75; }
+    a.go.vm { background: #0f6b4c; color: #fff; }
+    .pager { flex-wrap: wrap; }
+    .pager a, .pager .current, .pager .off {
+      display: inline-flex;
+      min-width: 2rem;
+      justify-content: center;
+      padding: 4px 8px;
+      border: 1px solid #c5cad3;
+      border-radius: 6px;
+      text-decoration: none;
+    }
+    .pager .current { background: #1d4e89; color: #fff; border-color: #1d4e89; }
+    .pager .off { color: #98a2b3; }
+    .pager form {
+      display: flex;
+      flex-direction: row;
+      gap: 6px;
+      align-items: center;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      border: 0;
+    }
+    .pager label.jump {
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+      width: auto;
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .pager label.jump input { width: 3.2rem; padding: 4px 6px; }
+    .pager button { padding: 4px 10px; font-size: 13px; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { padding: 6px 8px; text-align: left; vertical-align: top; white-space: nowrap; border-bottom: 1px solid #eef0f3; }
+    th { background: #f3f5f8; font-weight: 600; }
+    tr.missing { background: #fff8f3; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    a { color: #1d4e89; }
+    .tag {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: #f3d7b0;
+      color: #6a3e08;
+      font-size: 12px;
+    }
+    .muted { color: #667085; font-weight: 400; }
+    #status { margin: 8px 0 0; }
+    .group { font-size: 12px; color: #667085; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #14171c; color: #e8eaed; }
+      form.search, .results { background: #1c2128; border-color: #30363d; }
+      label { color: #e8eaed; }
+      input, select { background: #0f1318; border-color: #30363d; color: inherit; }
+      th { background: #242b33; }
+      td, .results h2, .leg-detail { border-color: #30363d; }
+      tr.missing { background: #2a2118; }
+      tbody.call tr.group td { background: #243044; border-top-color: #14171c; }
+      tbody.call td:first-child { box-shadow: inset 3px 0 0 #8eb6e8; }
+      tr.detail-row td { background: #1a212b; }
+      a.reset { border-color: #30363d; color: inherit; }
+      tr.leg:hover td { background: #243040; }
+      tr.leg.is-selected td { background: #1e3348; }
+      a.go.o11y { background: #2f6fad; }
+      .related-status { color: #d5deea; }
+      a.go.vm { background: #1a7a58; }
+      .pager a, .pager .off { border-color: #30363d; }
+      .pager .off { color: #667085; }
+      .banner { background: #2c2416; border-color: #6b5424; }
+      .error { background: #2c1919; border-color: #6b3030; }
+      .notice { background: #1a242e; border-color: #314354; }
+      a { color: #8eb6e8; }
+      button.ghost { color: #8eb6e8; border-color: #8eb6e8; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Correlação CDR</h1>
+    <p class="lead">FreeSWITCH, VoIPmonitor e logs no Grafana. Só leitura. Carimbos na timezone da cloud.</p>
+
+    {% if config_error %}
+      <p class="error">{{ config_error }}</p>
+    {% endif %}
+
+    <form class="search" method="get" action="/">
+      <div class="grid where">
+        <label>Cloud
+          <select name="cloud" required>
+            <option value="">—</option>
+            {% for cloud_id in clouds %}
+              <option value="{{ cloud_id }}" {% if cloud_id == selected_cloud %}selected{% endif %}>{{ cloud_id }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Domínio
+          <select name="domain" id="domain" required>
+            <option value="" {% if not domain %}selected{% endif %}>—</option>
+            {% for name in domains %}
+              <option value="{{ name }}" {% if name == domain %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+            {% if domain and domain not in domains %}
+              <option value="{{ domain }}" selected>{{ domain }}</option>
+            {% endif %}
+          </select>
+        </label>
+        <label>Gateway
+          <select name="gateway" id="gateway"{% if not domain %} disabled{% endif %}>
+            <option value="" {% if not gateway %}selected{% endif %}>—</option>
+            {% for name in gateways %}
+              <option value="{{ name }}" {% if name == gateway %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+            {% if gateway and gateway not in gateways %}
+              <option value="{{ gateway }}" selected>{{ gateway }}</option>
+            {% endif %}
+          </select>
+        </label>
+      </div>
+      <p class="muted" id="cloud-zone">{{ zone_label }}</p>
+      <div class="grid when">
+        <label>Início
+          <input type="datetime-local" name="start" value="{{ start }}" step="60">
+        </label>
+        <label>Fim
+          <input type="datetime-local" name="end" value="{{ end }}" step="60">
+        </label>
+        <label>Direção
+          <select name="direction">
+            <option value="" {% if not direction %}selected{% endif %}>—</option>
+            {% for value in directions %}
+              <option value="{{ value }}" {% if value == direction %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Hangup cause
+          <select name="hangup">
+            <option value="" {% if not hangup %}selected{% endif %}>—</option>
+            {% for value in hangup_causes %}
+              <option value="{{ value }}" {% if value == hangup %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Servidor
+          <select name="server" id="server">
+            <option value="" {% if not server %}selected{% endif %}>—</option>
+            {% for name in servers %}
+              <option value="{{ name }}" {% if name == server %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+            {% if server and server not in servers %}
+              <option value="{{ server }}" selected>{{ server }}</option>
+            {% endif %}
+          </select>
+        </label>
+      </div>
+      <div class="grid who">
+        <label>Origem
+          <input name="caller" value="{{ caller }}" autocomplete="off">
+        </label>
+        <label>Destino
+          <input name="destination" value="{{ destination }}" autocomplete="off">
+        </label>
+        <label class="wide">Call UUID ou SIP Call-ID <span class="muted">(opcional)</span>
+          <input name="q" value="{{ q }}" autocomplete="off">
+        </label>
+      </div>
+      <div class="actions">
+        <a class="reset" href="/{% if selected_cloud %}?cloud={{ selected_cloud }}{% endif %}">Limpar</a>
+        <button type="submit">Pesquisar</button>
+      </div>
+      <p id="status" class="muted" hidden></p>
+    </form>
+    <p id="domain-error" class="error" {% if not domain_error %}hidden{% endif %}>{{ domain_error }}</p>
+    <p id="server-error" class="error" {% if not server_error %}hidden{% endif %}>{{ server_error }}</p>
+    <p id="gateway-error" class="error" {% if not gateway_error %}hidden{% endif %}>{{ gateway_error }}</p>
+
+    {% if form_error %}
+      <p class="error">{{ form_error }}</p>
+    {% endif %}
+
+    {% macro pager(outcome, page_links, page_first, page_prev, page_next, page_last, kept) %}
+      {% if outcome.page_count > 1 %}
+        <nav class="pager" aria-label="Páginas">
+          {% if page_first %}<a href="{{ page_first }}">Primeira</a>{% else %}<span class="off">Primeira</span>{% endif %}
+          {% if page_prev %}<a href="{{ page_prev }}">Anterior</a>{% else %}<span class="off">Anterior</span>{% endif %}
+          {% for item in page_links %}
+            {% if item.gap %}
+              <span class="muted">…</span>
+            {% elif item.current %}
+              <span class="current">{{ item.n }}</span>
+            {% else %}
+              <a href="{{ item.href }}">{{ item.n }}</a>
+            {% endif %}
+          {% endfor %}
+          {% if page_next %}<a href="{{ page_next }}">Seguinte</a>{% else %}<span class="off">Seguinte</span>{% endif %}
+          {% if page_last %}<a href="{{ page_last }}">Última</a>{% else %}<span class="off">Última</span>{% endif %}
+          <span class="muted">Página {{ outcome.page }} de {{ outcome.page_count }}{% if outcome.pages_capped %}+{% endif %}</span>
+          <form method="get" action="/">
+            {% for key, value in kept.items() %}
+              <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endfor %}
+            <label class="jump">Ir para
+              <input name="page" inputmode="numeric" value="{{ outcome.page }}" required>
+            </label>
+            <button type="submit">Ir</button>
+          </form>
+        </nav>
+      {% endif %}
+    {% endmacro %}
+
+    {% if outcome %}
+      {% if outcome.cdr_not_found %}
+        <p class="banner">A CDR deste cloud não foi encontrada.</p>
+      {% endif %}
+      {% for notice in outcome.notices %}
+        <p class="notice">{{ notice }}</p>
+      {% endfor %}
+      {{ pager(outcome, page_links, page_first, page_prev, page_next, page_last, kept) }}
+
+      {% if outcome.calls %}
+        <section class="results">
+          <table>
+            <colgroup>
+              <col style="width: 15%">
+              <col style="width: 9%">
+              <col style="width: 12%">
+              <col style="width: 12%">
+              <col style="width: 12%">
+              <col style="width: 7%">
+              <col style="width: 12%">
+              <col style="width: 5%">
+              <col style="width: 16%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Direção</th>
+                <th>Origem</th>
+                <th>Destino</th>
+                <th>Causa</th>
+                <th>Duração</th>
+                <th>Servidor</th>
+                <th>MOS</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+              {% for call in outcome.calls %}
+                {% include "call.html" %}
+              {% endfor %}
+          </table>
+        </section>
+      {% endif %}
+
+      {% if outcome.voip_only %}
+        <section class="results">
+          <h2>VoIPmonitor <span class="muted">últimos 7 dias</span></h2>
+          <table>
+            <thead>
+              <tr>
+                <th>caller</th>
+                <th>called</th>
+                <th>resposta SIP</th>
+                <th>duração</th>
+                <th>codec</th>
+                <th>MOS</th>
+                <th>sensor</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in outcome.voip_only %}
+                <tr class="{{ 'missing' if item.missing else '' }}">
+                  <td>{{ item.caller | dash }}</td>
+                  <td>{{ item.called | dash }}</td>
+                  <td>{{ item.sip_response | dash }}</td>
+                  <td>{{ item.duration | dash }}</td>
+                  <td>{{ item.codec | dash }}</td>
+                  <td>{{ item.mos | dash }}</td>
+                  <td>{{ item.sensor | dash }}</td>
+                  <td>
+                    {% if item.share_url %}
+                      <a class="go vm" href="{{ item.share_url }}" target="_blank" rel="noopener noreferrer">VoIPmonitor</a>
+                    {% endif %}
+                    {% if item.missing %}
+                      <span class="tag">sem CDR no VoIPmonitor</span>
+                    {% endif %}
+                    {% if item.error %}
+                      <span class="muted">{{ item.error }}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </section>
+      {% endif %}
+      {{ pager(outcome, page_links, page_first, page_prev, page_next, page_last, kept) }}
+    {% endif %}
+  </main>
+  <script>
+    const cloudSelect = document.querySelector("select[name=cloud]");
+    const domainSelect = document.querySelector("#domain");
+    const serverSelect = document.querySelector("#server");
+    const gatewaySelect = document.querySelector("#gateway");
+    const domainError = document.querySelector("#domain-error");
+    const serverError = document.querySelector("#server-error");
+    const gatewayError = document.querySelector("#gateway-error");
+    const zoneLabel = document.querySelector("#cloud-zone");
+    const statusLine = document.querySelector("#status");
+    const searchForm = document.querySelector("form.search");
+    const searchButton = searchForm.querySelector("button[type=submit]");
+    const cloudZones = {{ cloud_zones_json }};
+    let domainLoad = 0;
+    let gatewayLoad = 0;
+
+    function showStatus(text) {
+      statusLine.hidden = !text;
+      statusLine.textContent = text || "";
+    }
+
+    function setDomains(names, selected, blankLabel) {
+      domainSelect.replaceChildren();
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = blankLabel || "—";
+      domainSelect.appendChild(blank);
+      for (const name of names) {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        if (name === selected) option.selected = true;
+        domainSelect.appendChild(option);
+      }
+    }
+
+    function resetGateway() {
+      gatewayLoad += 1;
+      gatewayError.hidden = true;
+      gatewayError.textContent = "";
+      gatewaySelect.disabled = true;
+      setOptions(gatewaySelect, [], "");
+    }
+
+    async function loadGateways() {
+      const cloudId = cloudSelect.value;
+      const domainName = domainSelect.value;
+      const ticket = ++gatewayLoad;
+      gatewayError.hidden = true;
+      gatewayError.textContent = "";
+      if (!cloudId || !domainName) {
+        gatewaySelect.disabled = true;
+        setOptions(gatewaySelect, [], "");
+        return;
+      }
+      gatewaySelect.disabled = true;
+      setOptions(gatewaySelect, [], "", "A carregar os gateways…");
+      showStatus("A carregar os gateways…");
+      try {
+        const response = await fetch(
+          "/gateways?cloud=" + encodeURIComponent(cloudId) +
+          "&domain=" + encodeURIComponent(domainName)
+        );
+        const data = await response.json();
+        if (ticket !== gatewayLoad) return;
+        if (data.error) {
+          gatewayError.hidden = false;
+          gatewayError.textContent = data.error;
+        }
+        setOptions(gatewaySelect, data.gateways || [], "");
+      } catch (error) {
+        if (ticket !== gatewayLoad) return;
+        gatewayError.hidden = false;
+        gatewayError.textContent = "Não foi possível ler os gateways deste cloud.";
+        setOptions(gatewaySelect, [], "");
+      } finally {
+        if (ticket === gatewayLoad) {
+          gatewaySelect.disabled = !domainSelect.value;
+          showStatus("");
+        }
+      }
+    }
+
+    async function loadDomains() {
+      const id = cloudSelect.value;
+      const ticket = ++domainLoad;
+      resetGateway();
+      zoneLabel.textContent = cloudZones[id] || "Escolhe um cloud para ver a timezone.";
+      domainError.hidden = true;
+      domainError.textContent = "";
+      serverError.hidden = true;
+      serverError.textContent = "";
+      if (!id) {
+        domainSelect.disabled = false;
+        serverSelect.disabled = false;
+        setDomains([], "");
+        setOptions(serverSelect, [], "");
+        showStatus("");
+        return;
+      }
+      domainSelect.disabled = true;
+      serverSelect.disabled = true;
+      setDomains([], "", "A carregar os domínios…");
+      setOptions(serverSelect, [], "", "A carregar os servidores…");
+      showStatus("A carregar os domínios e os servidores…");
+      try {
+        const [domainResponse, serverResponse] = await Promise.all([
+          fetch("/domains?cloud=" + encodeURIComponent(id)),
+          fetch("/servers?cloud=" + encodeURIComponent(id)),
+        ]);
+        const data = await domainResponse.json();
+        const serverData = await serverResponse.json();
+        if (ticket !== domainLoad) return;
+        if (data.error) {
+          domainError.hidden = false;
+          domainError.textContent = data.error;
+        }
+        if (serverData.error) {
+          serverError.hidden = false;
+          serverError.textContent = serverData.error;
+        }
+        setDomains(data.domains || [], "");
+        setOptions(serverSelect, serverData.servers || [], "");
+      } catch (error) {
+        if (ticket !== domainLoad) return;
+        domainError.hidden = false;
+        domainError.textContent = "Não foi possível ler os domínios deste cloud.";
+        serverError.hidden = false;
+        serverError.textContent = "Não foi possível ler os servidores deste cloud.";
+        setDomains([], "");
+        setOptions(serverSelect, [], "");
+      } finally {
+        if (ticket === domainLoad) {
+          domainSelect.disabled = false;
+          serverSelect.disabled = false;
+          showStatus("");
+        }
+      }
+    }
+
+    function setOptions(select, names, selected, blankLabel) {
+      select.replaceChildren();
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = blankLabel || "—";
+      select.appendChild(blank);
+      for (const name of names) {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        if (name === selected) option.selected = true;
+        select.appendChild(option);
+      }
+    }
+
+    cloudSelect.addEventListener("change", loadDomains);
+    domainSelect.addEventListener("change", loadGateways);
+
+    searchForm.addEventListener("submit", () => {
+      searchButton.disabled = true;
+      searchButton.textContent = "A pesquisar…";
+      showStatus("A pesquisar…");
+    });
+
+    document.querySelectorAll(".pager a").forEach((link) => {
+      link.addEventListener("click", () => {
+        showStatus("A carregar a página…");
+      });
+    });
+    document.querySelectorAll(".pager form").forEach((form) => {
+      form.addEventListener("submit", () => {
+        showStatus("A carregar a página…");
+      });
+    });
+
+    async function loadRelated(button) {
+      if (button.disabled || button.dataset.loaded === "1") return;
+      const call = button.closest("tbody.call");
+      const note = call.querySelector(".related-status");
+      button.disabled = true;
+      if (note) note.textContent = "A procurar chamadas relacionadas…";
+      try {
+        const params = new URLSearchParams();
+        params.set("cloud", cloudSelect.value);
+        params.set("domain", domainSelect.value);
+        params.set("call_uuid", button.dataset.call);
+        document.querySelectorAll("button.related[data-call]").forEach((node) => {
+          if (node.dataset.call) params.append("listed", node.dataset.call);
+        });
+        const response = await fetch("/related?" + params.toString());
+        const html = await response.text();
+        call.insertAdjacentHTML("afterend", html);
+        button.dataset.loaded = "1";
+      } catch (error) {
+        button.disabled = false;
+      } finally {
+        if (note) note.textContent = "";
+      }
+    }
+
+    document.addEventListener("click", async (event) => {
+      const relatedButton = event.target.closest("button.related");
+      if (relatedButton) {
+        event.preventDefault();
+        await loadRelated(relatedButton);
+        return;
+      }
+      const leg = event.target.closest("tr.leg");
+      if (!leg || event.target.closest("a, button")) return;
+      const call = leg.closest("tbody.call");
+      const detailRow = call.querySelector("tr.detail-row");
+      const panel = call.querySelector(".leg-detail");
+      const same = leg.classList.contains("is-selected");
+      document.querySelectorAll("tr.leg.is-selected").forEach((row) => row.classList.remove("is-selected"));
+      if (same && detailRow.dataset.open === "1") {
+        detailRow.hidden = true;
+        detailRow.dataset.open = "";
+        return;
+      }
+      leg.after(detailRow);
+      leg.classList.add("is-selected");
+      detailRow.hidden = false;
+      detailRow.dataset.open = "1";
+      detailRow.scrollIntoView({ block: "nearest" });
+      if (panel.dataset.uuid === leg.dataset.uuid && panel.dataset.loaded === "1") return;
+      panel.dataset.uuid = leg.dataset.uuid;
+      panel.dataset.loaded = "";
+      const identity = [leg.dataset.uuid, leg.dataset.sip, leg.dataset.host].filter(Boolean).join(" · ");
+      panel.replaceChildren();
+      const meta = document.createElement("p");
+      meta.className = "muted";
+      meta.textContent = identity;
+      const body = document.createElement("div");
+      body.textContent = "A ler…";
+      panel.append(meta, body);
+      try {
+        const response = await fetch(
+          "/cdr-detail?cloud=" + encodeURIComponent(cloudSelect.value) +
+          "&uuid=" + encodeURIComponent(leg.dataset.uuid)
+        );
+        body.innerHTML = await response.text();
+        panel.dataset.loaded = "1";
+      } catch (error) {
+        body.textContent = "Não foi possível ler a CDR deste cloud.";
+      }
+    });
+  </script>
+</body>
+</html>

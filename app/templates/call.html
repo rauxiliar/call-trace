@@ -1,0 +1,44 @@
+<tbody class="call">
+  <tr class="group">
+    <td colspan="9">
+      <div class="group-head">
+        <span>Chamada <code>{{ call.call_uuid }}</code></span>
+        <span class="group-actions">
+          <span class="related-status"></span>
+          <button type="button" class="related" data-call="{{ call.call_uuid }}">Relacionadas</button>
+          {% if call.logs_url %}
+            <a class="go o11y" href="{{ call.logs_url }}" target="_blank" rel="noopener noreferrer">o11y</a>
+          {% else %}
+            <span class="muted">Sem o11y</span>
+          {% endif %}
+        </span>
+      </div>
+    </td>
+  </tr>
+  {% for item in call.legs %}
+    <tr class="leg {{ 'missing' if item.voip.missing else '' }}" data-uuid="{{ item.leg.uuid }}" data-sip="{{ item.leg.sip_call_id }}" data-host="{{ item.leg.hostname }}" title="Clica para ver as variáveis e os dialplans">
+      <td>{{ format_stamp(item.leg.start_stamp, tz) }}</td>
+      <td>{{ item.leg.direction | dash }}</td>
+      <td>{{ item.leg.caller_number | dash }}</td>
+      <td>{{ item.leg.destination | dash }}</td>
+      <td>{{ item.leg.hangup_cause | dash }}</td>
+      <td>{% if item.leg.billmsec is not none %}{{ (item.leg.billmsec / 1000)|round(1) }} s{% else %}—{% endif %}</td>
+      <td>{{ item.leg.hostname | dash }}</td>
+      <td>{{ item.voip.mos | dash }}</td>
+      <td class="leg-actions">
+        {% if item.voip.share_url %}
+          <a class="go vm" href="{{ item.voip.share_url }}" target="_blank" rel="noopener noreferrer">VoIPmonitor</a>
+        {% endif %}
+        {% if item.voip.missing %}
+          <span class="tag">sem CDR no VoIPmonitor</span>
+        {% endif %}
+        {% if item.voip.error %}
+          <span class="muted">{{ item.voip.error }}</span>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  <tr class="detail-row" hidden>
+    <td colspan="9"><div class="leg-detail"></div></td>
+  </tr>
+</tbody>

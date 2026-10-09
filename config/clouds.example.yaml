@@ -1,0 +1,29 @@
+# Copy to config/clouds.yaml and replace each dsn. config/clouds.yaml is gitignored.
+# dsn is the CDR database. domains_dsn is the other database, the one with public.v_domains.
+# region selects the Loki datasource: us -> Loki-US, eu -> Loki-EU.
+# namespace is one Loki query. The cloud id is a separate query on label cloud.
+# timezone is the IANA name of that cloud's CDR clock. The page filters and shows stamps in it.
+
+grafana_base_url: https://o11y.broadvoice.io
+loki:
+  us: f4a61dda-25fc-4558-a129-71ca84325cad
+  eu: f83d2b12-ce21-4c51-a27f-f60c1683fde4
+
+clouds:
+  - id: example-us
+    region: us
+    timezone: America/Boise
+    namespace: us-gocontact-mt
+    dsn: postgres://calltrace_ro:CHANGE_ME@10.1.2.3:5432/cdrs
+    domains_dsn: postgres://calltrace_ro:CHANGE_ME@10.1.2.3:5432/fusionpbx
+    ssh: rauxiliar@us-gocontact-mt-f0-vpn.finesource.org
+    # Uma das duas. A password não vai para o browser nem para a linha de comandos.
+    # ssh_key: ~/.ssh/id_ed25519
+    # ssh_password: CHANGE_ME
+    # Só no laptop, se o Postgres não for direto. Na cloud, apagar estas linhas.
+    # ssh: user@bastion.example
+  - id: example-eu-vm
+    region: eu
+    timezone: Europe/Lisbon
+    namespace: ""
+    dsn: postgres://calltrace_ro:CHANGE_ME@10.1.2.3:5432/cdrs

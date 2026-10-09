@@ -1,0 +1,8 @@
+{% for notice in outcome.notices %}
+<tbody class="call">
+  <tr class="group"><td colspan="9">{{ notice }}</td></tr>
+</tbody>
+{% endfor %}
+{% for call in outcome.calls %}
+  {% include "call.html" %}
+{% endfor %}

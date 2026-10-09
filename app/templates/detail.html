@@ -1,0 +1,60 @@
+{% if not found %}
+  <p class="notice">{{ message }}</p>
+{% else %}
+  <div class="detail-grid">
+    <section class="detail-block">
+      <h3>Dialplans</h3>
+      <div class="detail-scroll">
+        <table>
+          <colgroup>
+            <col class="key">
+            <col>
+          </colgroup>
+          <thead>
+            <tr>
+              <th>aplicação</th>
+              <th>dados</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for step in dialplans %}
+              <tr>
+                <td>{{ step.app | dash }}</td>
+                <td>{{ step.data | dash }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="2">—</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="detail-block vars">
+      <h3>Variáveis</h3>
+      <div class="detail-scroll">
+        <table>
+          <colgroup>
+            <col class="key">
+            <col>
+          </colgroup>
+          <thead>
+            <tr>
+              <th>nome</th>
+              <th>valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for name, value in variables %}
+              <tr>
+                <td>{{ name }}</td>
+                <td>{{ value | dash }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="2">—</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+{% endif %}
