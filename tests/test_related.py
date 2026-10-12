@@ -141,6 +141,7 @@ def test_a_call_already_listed_is_skipped_but_calls_beyond_it_remain():
     outcome = _related(_linked_repo(), CALL, listed={OTHER})
     found = {call.call_uuid for call in outcome.calls}
     assert found == {BRIDGE, FURTHER}
+    assert outcome.listed_related == [OTHER]
 
 
 def test_the_related_endpoint_omits_a_call_that_was_already_listed():
@@ -160,16 +161,40 @@ def test_the_related_endpoint_omits_a_call_that_was_already_listed():
     assert f'data-call="{OTHER}"' not in found.text
     assert f'data-call="{BRIDGE}"' in found.text
     assert f'data-call="{FURTHER}"' in found.text
+    assert found.headers.get("X-Related-Listed") == OTHER
 
 
-def test_when_every_linked_call_is_already_listed_the_search_is_empty():
+def test_when_every_linked_call_is_already_listed_the_search_reports_them():
     outcome = _related(
         _linked_repo(),
         OTHER,
         listed={CALL, OTHER, BRIDGE, FURTHER},
     )
     assert outcome.calls == []
-    assert "Sem chamadas relacionadas." in outcome.notices
+    assert "Sem chamadas relacionadas." not in outcome.notices
+    assert set(outcome.listed_related) == {CALL, BRIDGE, FURTHER}
+
+
+def test_the_related_endpoint_reports_listed_related_in_a_header():
+    repo = _linked_repo()
+    app = create_app(settings=settings_for(cloud_us()), repo_for=lambda cloud: repo, voip=FakeVoip())
+    client = TestClient(app)
+    found = client.get(
+        "/related",
+        params={
+            "cloud": "example-us",
+            "domain": DOMAIN,
+            "call_uuid": OTHER,
+            "listed": [CALL, OTHER, BRIDGE, FURTHER],
+        },
+    )
+    assert found.status_code == 200
+    assert f'data-call="{CALL}"' not in found.text
+    assert f'data-call="{BRIDGE}"' not in found.text
+    assert f'data-call="{FURTHER}"' not in found.text
+    assert "Sem chamadas relacionadas." not in found.text
+    reported = set(found.headers.get("X-Related-Listed", "").split(","))
+    assert reported == {CALL, BRIDGE, FURTHER}
 
 
 def test_invalid_domain_does_not_become_a_table_name():
@@ -246,4 +271,6 @@ def test_the_page_offers_related_calls_in_the_listing():
     assert again.status_code == 200
     assert f'data-call="{CALL}"' not in again.text
     assert f'data-call="{OTHER}"' not in again.text
-    assert "Sem chamadas relacionadas." in again.text
+    assert "Sem chamadas relacionadas." not in again.text
+    assert again.headers.get("X-Related-Listed") == CALL
+    assert "Mostrar todas" in page.text

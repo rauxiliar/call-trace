@@ -706,8 +706,63 @@
       });
     });
 
+    function callUuidOf(tbody) {
+      const node = tbody.querySelector("button.related[data-call]");
+      return node ? node.dataset.call : "";
+    }
+
+    function clearRelatedFocus() {
+      document.querySelectorAll("tbody.call").forEach((node) => {
+        node.style.display = "";
+      });
+      document.querySelectorAll(".pager").forEach((node) => {
+        node.hidden = false;
+      });
+      document.querySelectorAll("button.related[data-restore='1']").forEach((btn) => {
+        btn.dataset.restore = "";
+        btn.textContent = t("Relacionadas");
+      });
+    }
+
+    function applyRelatedFocus(seedCall, keepIds, insertedNodes) {
+      const keep = new Set([...keepIds].map((id) => id.toLowerCase()));
+      const inserted = new Set(insertedNodes);
+      document.querySelectorAll("tbody.call").forEach((tbody) => {
+        if (tbody === seedCall || inserted.has(tbody)) {
+          tbody.style.display = "";
+          return;
+        }
+        const id = callUuidOf(tbody);
+        tbody.style.display = id && keep.has(id.toLowerCase()) ? "" : "none";
+      });
+    }
+
+    function enterRelatedFocus(button, keepIds, insertedNodes) {
+      clearRelatedFocus();
+      applyRelatedFocus(button.closest("tbody.call"), keepIds, insertedNodes);
+      document.querySelectorAll(".pager").forEach((node) => {
+        node.hidden = true;
+      });
+      button.dataset.focusKeep = keepIds.join(",");
+      button.dataset.restore = "1";
+      button.textContent = t("Mostrar todas");
+      button.disabled = false;
+    }
+
     async function loadRelated(button) {
-      if (button.disabled || button.dataset.loaded === "1") return;
+      if (button.dataset.restore === "1") {
+        clearRelatedFocus();
+        button.disabled = false;
+        return;
+      }
+      if (button.dataset.loaded === "1") {
+        const keepIds = (button.dataset.focusKeep || "").split(",").filter(Boolean);
+        if (keepIds.length) {
+          enterRelatedFocus(button, keepIds, []);
+        }
+        return;
+      }
+      if (button.disabled) return;
       const call = button.closest("tbody.call");
       const note = call.querySelector(".related-status");
       button.disabled = true;
@@ -721,9 +776,20 @@
           if (node.dataset.call) params.append("listed", node.dataset.call);
         });
         const response = await fetch("/related?" + params.toString());
+        const listedRelated = (response.headers.get("X-Related-Listed") || "")
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
         const html = await response.text();
+        const before = new Set(document.querySelectorAll("tbody.call"));
         call.insertAdjacentHTML("afterend", html);
+        const inserted = [...document.querySelectorAll("tbody.call")].filter((node) => !before.has(node));
+        const newCallIds = inserted.map(callUuidOf).filter(Boolean);
         button.dataset.loaded = "1";
+        if (listedRelated.length || newCallIds.length) {
+          const keepIds = [button.dataset.call, ...listedRelated, ...newCallIds];
+          enterRelatedFocus(button, keepIds, inserted);
+        }
       } catch (error) {
         button.disabled = false;
       } finally {

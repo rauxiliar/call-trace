@@ -156,6 +156,7 @@ class SearchOutcome:
     notices: list[str] = field(default_factory=list)
     calls: list[CallView] = field(default_factory=list)
     voip_only: list[VoipInfo] = field(default_factory=list)
+    listed_related: list[str] = field(default_factory=list)
     page: int = 1
     page_count: int = 0
     pages_capped: bool = False
@@ -705,10 +706,18 @@ def related(
     seen: set[str] = set()
     found: list[Leg] = []
     found_ids: set[str] = set()
+    listed_related: list[str] = []
+    listed_related_ids: set[str] = set()
     _enqueue(pending, seen, seed_id)
     for leg in seed_legs:
         _enqueue(pending, seen, leg.uuid)
         _enqueue(pending, seen, leg.sip_call_id)
+
+    def remember_listed(call_id: str) -> None:
+        if call_id in listed_related_ids or call_id in seed_uuids:
+            return
+        listed_related_ids.add(call_id)
+        listed_related.append(call_id)
 
     def add_leg(leg_domain: str | None, leg_uuid: str) -> None:
         if len(found) >= RELATED_CAP or not leg_domain or leg_uuid.lower() in seed_uuids:
@@ -728,7 +737,9 @@ def related(
         chosen = next((leg for leg in matched if leg.uuid.lower() == leg_uuid.lower()), None)
         if chosen is None or chosen.uuid.lower() in seed_uuids or chosen.uuid.lower() in found_ids:
             return
-        if (chosen.call_uuid or chosen.uuid).lower() in listed_ids:
+        call_id = (chosen.call_uuid or chosen.uuid).lower()
+        if call_id in listed_ids:
+            remember_listed(call_id)
             return
         found.append(chosen)
         found_ids.add(chosen.uuid.lower())
@@ -750,10 +761,11 @@ def related(
 
     legs = _dedupe(found)
     if not legs:
-        _add_notice(notices, _("Sem chamadas relacionadas."))
-        return SearchOutcome(notices=notices)
+        if not listed_related:
+            _add_notice(notices, _("Sem chamadas relacionadas."))
+        return SearchOutcome(notices=notices, listed_related=listed_related)
     calls = _build_calls(legs, cloud, settings, voip, moment, notices)
-    return SearchOutcome(notices=notices, calls=calls)
+    return SearchOutcome(notices=notices, calls=calls, listed_related=listed_related)
 
 
 def correlate(

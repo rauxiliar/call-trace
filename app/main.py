@@ -362,7 +362,10 @@ def create_app(
             message = _("Não foi possível ler a CDR deste cloud.")
         if message:
             outcome = SearchOutcome(notices=[message])
-        return _render(request, {"outcome": outcome, "tz": zone}, "related.html")
+        response = _render(request, {"outcome": outcome, "tz": zone}, "related.html")
+        if outcome.listed_related:
+            response.headers["X-Related-Listed"] = ",".join(outcome.listed_related)
+        return response
 
     @app.get("/cdr-detail", response_class=HTMLResponse)
     def cdr_detail(

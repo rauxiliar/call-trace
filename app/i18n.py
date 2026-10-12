@@ -28,6 +28,8 @@ JS_MESSAGES = (
     "A pesquisar…",
     "A carregar a página…",
     "A procurar chamadas relacionadas…",
+    "Relacionadas",
+    "Mostrar todas",
     "A ler…",
     "Não foi possível ler a CDR deste cloud.",
 )
