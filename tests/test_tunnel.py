@@ -229,10 +229,33 @@ def test_page_does_not_show_the_jump_host(monkeypatch):
     cloud = _cloud_with_ssh()
     app = create_app(settings=settings_for(cloud))
     page = TestClient(app).get("/", params={"cloud": cloud.id, "domain": "tenant.example", "q": CALL}).text
-    assert TUNNEL_FAILED in page
+    assert page.count(TUNNEL_FAILED) == 1
     assert "dsn-secret-value" not in page
     assert "bastion" not in page
     assert "user@" not in page
+
+
+def test_same_domain_and_server_error_shows_once():
+    from app.db import CdrReadError
+
+    class BrokenLists:
+        def list_domains(self):
+            raise CdrReadError(TUNNEL_FAILED)
+
+        def list_servers(self):
+            raise CdrReadError(TUNNEL_FAILED)
+
+        def list_gateways(self, domain):
+            return []
+
+    cloud = _cloud_with_ssh()
+    app = create_app(
+        settings=settings_for(cloud),
+        repo_for=lambda chosen: BrokenLists(),
+    )
+    page = TestClient(app).get("/", params={"cloud": cloud.id}).text
+    assert page.count(TUNNEL_FAILED) == 1
+    assert 'id="server-error" class="error" hidden' in page
 
 
 def test_ssh_password_stays_out_of_the_command_line():

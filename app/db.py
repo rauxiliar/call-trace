@@ -12,6 +12,7 @@ import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
 
+from app.i18n import _
 from app.models import DetailsRow, Leg
 from app.zones import cdr_wall, from_cdr_wall
 
@@ -300,7 +301,7 @@ class PostgresCdrRepository:
                     cur.execute(DETAILS_SQL, (search_id, search_id))
                     rows = cur.fetchall()
         except Exception as exc:
-            raise CdrReadError("Não foi possível ler a CDR deste cloud.") from exc
+            raise CdrReadError(_("Não foi possível ler a CDR deste cloud.")) from exc
         return [
             DetailsRow(
                 uuid=_text(row.get("uuid")),
@@ -317,7 +318,7 @@ class PostgresCdrRepository:
                     cur.execute(LEG_DETAIL_SQL, (uuid,))
                     row = cur.fetchone()
         except Exception as exc:
-            raise CdrReadError("Não foi possível ler a CDR deste cloud.") from exc
+            raise CdrReadError(_("Não foi possível ler a CDR deste cloud.")) from exc
         if not row:
             return None
         return DetailsRow(
@@ -334,7 +335,7 @@ class PostgresCdrRepository:
                     cur.execute(EVENTS_SQL, (search_id, search_id))
                     rows = cur.fetchall()
         except Exception as exc:
-            raise CdrReadError("Não foi possível ler a CDR deste cloud.") from exc
+            raise CdrReadError(_("Não foi possível ler a CDR deste cloud.")) from exc
         return [
             DetailsRow(
                 uuid=_text(row.get("uuid")),
@@ -348,10 +349,10 @@ class PostgresCdrRepository:
     def list_domains(self) -> list[str]:
         if self._domains_dsn:
             dsn, query = self._domains_dsn, V_DOMAINS_SQL
-            message = "Não foi possível ler os domínios deste cloud."
+            message = _("Não foi possível ler os domínios deste cloud.")
         else:
             dsn, query = self._dsn, DOMAINS_SQL
-            message = "Não foi possível ler a CDR deste cloud."
+            message = _("Não foi possível ler a CDR deste cloud.")
         try:
             with connect(dsn) as conn:
                 with conn.cursor() as cur:
@@ -369,7 +370,7 @@ class PostgresCdrRepository:
                     cur.execute(V_SERVERS_SQL)
                     names = [row[0] for row in cur.fetchall()]
         except Exception as exc:
-            raise CdrReadError("Não foi possível ler os servidores deste cloud.") from exc
+            raise CdrReadError(_("Não foi possível ler os servidores deste cloud.")) from exc
         return allowed_domains(names)
 
     def list_gateways(self, domain: str) -> list[str]:
@@ -383,7 +384,7 @@ class PostgresCdrRepository:
         except InvalidDomain:
             raise
         except Exception as exc:
-            raise CdrReadError("Não foi possível ler os gateways deste cloud.") from exc
+            raise CdrReadError(_("Não foi possível ler os gateways deste cloud.")) from exc
         return allowed_domains(names)
 
     def fetch_legs_by_call_uuid(
@@ -435,7 +436,7 @@ class PostgresCdrRepository:
         except InvalidDomain:
             raise
         except Exception as exc:
-            raise CdrReadError("Não foi possível ler a CDR deste cloud.") from exc
+            raise CdrReadError(_("Não foi possível ler a CDR deste cloud.")) from exc
         return int(row[0] if row else 0)
 
     def _fetch_legs(self, query: sql.Composed, params: list[Any] | tuple[Any, ...], domain: str) -> list[Leg]:
@@ -450,5 +451,5 @@ class PostgresCdrRepository:
         except InvalidDomain:
             raise
         except Exception as exc:
-            raise CdrReadError("Não foi possível ler a CDR deste cloud.") from exc
+            raise CdrReadError(_("Não foi possível ler a CDR deste cloud.")) from exc
         return [leg_from_mapping(row, domain, self._timezone) for row in rows]

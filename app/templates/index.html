@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="{{ html_lang() }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Correlação CDR</title>
+  <title>{{ _("Correlação CDR") }}</title>
   <style>
     :root { color-scheme: light dark; }
     html, body { max-width: 100%; overflow-x: clip; }
@@ -14,7 +14,34 @@
       color: #1c1f24;
     }
     main { box-sizing: border-box; max-width: min(1400px, 100%); margin: 0 auto; padding: 24px 20px 48px; min-width: 0; }
-    h1 { font-size: 1.35rem; margin: 0 0 4px; }
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 4px;
+    }
+    .title-row h1 { font-size: 1.35rem; margin: 0; }
+    label.lang {
+      flex-direction: row;
+      align-items: center;
+      width: auto;
+      margin: 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    label.lang select { width: auto; min-width: 6.5rem; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
     .lead { margin: 0 0 20px; color: #4b5563; }
     form.search {
       display: flex;
@@ -261,8 +288,17 @@
 </head>
 <body>
   <main>
-    <h1>Correlação CDR</h1>
-    <p class="lead">FreeSWITCH, VoIPmonitor e logs no Grafana. Só leitura. Carimbos na timezone da cloud.</p>
+    <div class="title-row">
+      <h1>{{ _("Correlação CDR") }}</h1>
+      <label class="lang">
+        <span class="sr-only">{{ _("Língua") }}</span>
+        <select id="lang" aria-label="{{ _('Língua') }}">
+          <option value="pt-PT" {% if locale == "pt-PT" %}selected{% endif %}>PT-PT</option>
+          <option value="en-US" {% if locale == "en-US" %}selected{% endif %}>EN-US</option>
+        </select>
+      </label>
+    </div>
+    <p class="lead">{{ _("FreeSWITCH, VoIPmonitor e logs no Grafana. Só leitura. Carimbos na timezone da cloud.") }}</p>
 
     {% if config_error %}
       <p class="error">{{ config_error }}</p>
@@ -278,7 +314,7 @@
             {% endfor %}
           </select>
         </label>
-        <label>Domínio
+        <label>{{ _("Domínio") }}
           <select name="domain" id="domain" required>
             <option value="" {% if not domain %}selected{% endif %}>—</option>
             {% for name in domains %}
@@ -303,13 +339,13 @@
       </div>
       <p class="muted" id="cloud-zone">{{ zone_label }}</p>
       <div class="grid when">
-        <label>Início
+        <label>{{ _("Início") }}
           <input type="datetime-local" name="start" value="{{ start }}" step="60">
         </label>
-        <label>Fim
+        <label>{{ _("Fim") }}
           <input type="datetime-local" name="end" value="{{ end }}" step="60">
         </label>
-        <label>Direção
+        <label>{{ _("Direção") }}
           <select name="direction">
             <option value="" {% if not direction %}selected{% endif %}>—</option>
             {% for value in directions %}
@@ -325,7 +361,7 @@
             {% endfor %}
           </select>
         </label>
-        <label>Servidor
+        <label>{{ _("Servidor") }}
           <select name="server" id="server">
             <option value="" {% if not server %}selected{% endif %}>—</option>
             {% for name in servers %}
@@ -338,35 +374,35 @@
         </label>
       </div>
       <div class="grid who">
-        <label>Origem
+        <label>{{ _("Origem") }}
           <input name="caller" value="{{ caller }}" autocomplete="off">
         </label>
-        <label>Destino
+        <label>{{ _("Destino") }}
           <input name="destination" value="{{ destination }}" autocomplete="off">
         </label>
-        <label class="wide">Call UUID ou SIP Call-ID <span class="muted">(opcional)</span>
+        <label class="wide">{{ _("Call UUID ou SIP Call-ID") }} <span class="muted">{{ _("(opcional)") }}</span>
           <input name="q" value="{{ q }}" autocomplete="off">
         </label>
       </div>
       <div class="actions">
-        <a class="reset" href="/{% if selected_cloud %}?cloud={{ selected_cloud }}{% endif %}">Limpar</a>
-        <button type="submit">Pesquisar</button>
+        <a class="reset" href="/{% if selected_cloud %}?cloud={{ selected_cloud }}{% endif %}">{{ _("Limpar") }}</a>
+        <button type="submit">{{ _("Pesquisar") }}</button>
       </div>
       <p id="status" class="muted" hidden></p>
     </form>
     <p id="domain-error" class="error" {% if not domain_error %}hidden{% endif %}>{{ domain_error }}</p>
-    <p id="server-error" class="error" {% if not server_error %}hidden{% endif %}>{{ server_error }}</p>
-    <p id="gateway-error" class="error" {% if not gateway_error %}hidden{% endif %}>{{ gateway_error }}</p>
+    <p id="server-error" class="error" {% if not server_error or server_error == domain_error %}hidden{% endif %}>{% if server_error != domain_error %}{{ server_error }}{% endif %}</p>
+    <p id="gateway-error" class="error" {% if not gateway_error or gateway_error == domain_error or gateway_error == server_error %}hidden{% endif %}>{% if gateway_error != domain_error and gateway_error != server_error %}{{ gateway_error }}{% endif %}</p>
 
-    {% if form_error %}
+    {% if form_error and form_error != domain_error and form_error != server_error and form_error != gateway_error %}
       <p class="error">{{ form_error }}</p>
     {% endif %}
 
     {% macro pager(outcome, page_links, page_first, page_prev, page_next, page_last, kept) %}
       {% if outcome.page_count > 1 %}
-        <nav class="pager" aria-label="Páginas">
-          {% if page_first %}<a href="{{ page_first }}">Primeira</a>{% else %}<span class="off">Primeira</span>{% endif %}
-          {% if page_prev %}<a href="{{ page_prev }}">Anterior</a>{% else %}<span class="off">Anterior</span>{% endif %}
+        <nav class="pager" aria-label="{{ _('Páginas') }}">
+          {% if page_first %}<a href="{{ page_first }}">{{ _("Primeira") }}</a>{% else %}<span class="off">{{ _("Primeira") }}</span>{% endif %}
+          {% if page_prev %}<a href="{{ page_prev }}">{{ _("Anterior") }}</a>{% else %}<span class="off">{{ _("Anterior") }}</span>{% endif %}
           {% for item in page_links %}
             {% if item.gap %}
               <span class="muted">…</span>
@@ -376,17 +412,17 @@
               <a href="{{ item.href }}">{{ item.n }}</a>
             {% endif %}
           {% endfor %}
-          {% if page_next %}<a href="{{ page_next }}">Seguinte</a>{% else %}<span class="off">Seguinte</span>{% endif %}
-          {% if page_last %}<a href="{{ page_last }}">Última</a>{% else %}<span class="off">Última</span>{% endif %}
-          <span class="muted">Página {{ outcome.page }} de {{ outcome.page_count }}{% if outcome.pages_capped %}+{% endif %}</span>
+          {% if page_next %}<a href="{{ page_next }}">{{ _("Seguinte") }}</a>{% else %}<span class="off">{{ _("Seguinte") }}</span>{% endif %}
+          {% if page_last %}<a href="{{ page_last }}">{{ _("Última") }}</a>{% else %}<span class="off">{{ _("Última") }}</span>{% endif %}
+          <span class="muted">{{ _("Página {page} de {count}").format(page=outcome.page, count=outcome.page_count) }}{% if outcome.pages_capped %}+{% endif %}</span>
           <form method="get" action="/">
             {% for key, value in kept.items() %}
               <input type="hidden" name="{{ key }}" value="{{ value }}">
             {% endfor %}
-            <label class="jump">Ir para
+            <label class="jump">{{ _("Ir para") }}
               <input name="page" inputmode="numeric" value="{{ outcome.page }}" required>
             </label>
-            <button type="submit">Ir</button>
+            <button type="submit">{{ _("Ir") }}</button>
           </form>
         </nav>
       {% endif %}
@@ -394,7 +430,7 @@
 
     {% if outcome %}
       {% if outcome.cdr_not_found %}
-        <p class="banner">A CDR deste cloud não foi encontrada.</p>
+        <p class="banner">{{ _("A CDR deste cloud não foi encontrada.") }}</p>
       {% endif %}
       {% for notice in outcome.notices %}
         <p class="notice">{{ notice }}</p>
@@ -417,15 +453,15 @@
             </colgroup>
             <thead>
               <tr>
-                <th>Hora</th>
-                <th>Direção</th>
-                <th>Origem</th>
-                <th>Destino</th>
-                <th>Causa</th>
-                <th>Duração</th>
-                <th>Servidor</th>
+                <th>{{ _("Hora") }}</th>
+                <th>{{ _("Direção") }}</th>
+                <th>{{ _("Origem") }}</th>
+                <th>{{ _("Destino") }}</th>
+                <th>{{ _("Causa") }}</th>
+                <th>{{ _("Duração") }}</th>
+                <th>{{ _("Servidor") }}</th>
                 <th>MOS</th>
-                <th>Ações</th>
+                <th>{{ _("Ações") }}</th>
               </tr>
             </thead>
               {% for call in outcome.calls %}
@@ -437,18 +473,18 @@
 
       {% if outcome.voip_only %}
         <section class="results">
-          <h2>VoIPmonitor <span class="muted">últimos 7 dias</span></h2>
+          <h2>VoIPmonitor <span class="muted">{{ _("últimos 7 dias") }}</span></h2>
           <table>
             <thead>
               <tr>
                 <th>caller</th>
                 <th>called</th>
-                <th>resposta SIP</th>
-                <th>duração</th>
+                <th>{{ _("resposta SIP") }}</th>
+                <th>{{ _("duração") }}</th>
                 <th>codec</th>
                 <th>MOS</th>
                 <th>sensor</th>
-                <th>Ações</th>
+                <th>{{ _("Ações") }}</th>
               </tr>
             </thead>
             <tbody>
@@ -466,7 +502,7 @@
                       <a class="go vm" href="{{ item.share_url }}" target="_blank" rel="noopener noreferrer">VoIPmonitor</a>
                     {% endif %}
                     {% if item.missing %}
-                      <span class="tag">sem CDR no VoIPmonitor</span>
+                      <span class="tag">{{ _("sem CDR no VoIPmonitor") }}</span>
                     {% endif %}
                     {% if item.error %}
                       <span class="muted">{{ item.error }}</span>
@@ -482,6 +518,7 @@
     {% endif %}
   </main>
   <script>
+    const I18N = {{ i18n_js_json }};
     const cloudSelect = document.querySelector("select[name=cloud]");
     const domainSelect = document.querySelector("#domain");
     const serverSelect = document.querySelector("#server");
@@ -493,9 +530,20 @@
     const statusLine = document.querySelector("#status");
     const searchForm = document.querySelector("form.search");
     const searchButton = searchForm.querySelector("button[type=submit]");
+    const langSelect = document.querySelector("#lang");
     const cloudZones = {{ cloud_zones_json }};
     let domainLoad = 0;
     let gatewayLoad = 0;
+
+    function t(msgid) {
+      return I18N[msgid] || msgid;
+    }
+
+    if (langSelect) {
+      langSelect.addEventListener("change", () => {
+        location.href = "/lang?set=" + encodeURIComponent(langSelect.value);
+      });
+    }
 
     function showStatus(text) {
       statusLine.hidden = !text;
@@ -537,8 +585,8 @@
         return;
       }
       gatewaySelect.disabled = true;
-      setOptions(gatewaySelect, [], "", "A carregar os gateways…");
-      showStatus("A carregar os gateways…");
+      setOptions(gatewaySelect, [], "", t("A carregar os gateways…"));
+      showStatus(t("A carregar os gateways…"));
       try {
         const response = await fetch(
           "/gateways?cloud=" + encodeURIComponent(cloudId) +
@@ -554,7 +602,7 @@
       } catch (error) {
         if (ticket !== gatewayLoad) return;
         gatewayError.hidden = false;
-        gatewayError.textContent = "Não foi possível ler os gateways deste cloud.";
+        gatewayError.textContent = t("Não foi possível ler os gateways deste cloud.");
         setOptions(gatewaySelect, [], "");
       } finally {
         if (ticket === gatewayLoad) {
@@ -568,7 +616,7 @@
       const id = cloudSelect.value;
       const ticket = ++domainLoad;
       resetGateway();
-      zoneLabel.textContent = cloudZones[id] || "Escolhe um cloud para ver a timezone.";
+      zoneLabel.textContent = cloudZones[id] || t("Escolhe um cloud para ver a timezone.");
       domainError.hidden = true;
       domainError.textContent = "";
       serverError.hidden = true;
@@ -583,9 +631,9 @@
       }
       domainSelect.disabled = true;
       serverSelect.disabled = true;
-      setDomains([], "", "A carregar os domínios…");
-      setOptions(serverSelect, [], "", "A carregar os servidores…");
-      showStatus("A carregar os domínios e os servidores…");
+      setDomains([], "", t("A carregar os domínios…"));
+      setOptions(serverSelect, [], "", t("A carregar os servidores…"));
+      showStatus(t("A carregar os domínios e os servidores…"));
       try {
         const [domainResponse, serverResponse] = await Promise.all([
           fetch("/domains?cloud=" + encodeURIComponent(id)),
@@ -594,22 +642,24 @@
         const data = await domainResponse.json();
         const serverData = await serverResponse.json();
         if (ticket !== domainLoad) return;
-        if (data.error) {
+        const domainMsg = data.error || "";
+        const serverMsg = serverData.error || "";
+        if (domainMsg) {
           domainError.hidden = false;
-          domainError.textContent = data.error;
+          domainError.textContent = domainMsg;
         }
-        if (serverData.error) {
+        if (serverMsg && serverMsg !== domainMsg) {
           serverError.hidden = false;
-          serverError.textContent = serverData.error;
+          serverError.textContent = serverMsg;
         }
         setDomains(data.domains || [], "");
         setOptions(serverSelect, serverData.servers || [], "");
       } catch (error) {
         if (ticket !== domainLoad) return;
         domainError.hidden = false;
-        domainError.textContent = "Não foi possível ler os domínios deste cloud.";
+        domainError.textContent = t("Não foi possível ler os domínios deste cloud.");
         serverError.hidden = false;
-        serverError.textContent = "Não foi possível ler os servidores deste cloud.";
+        serverError.textContent = t("Não foi possível ler os servidores deste cloud.");
         setDomains([], "");
         setOptions(serverSelect, [], "");
       } finally {
@@ -641,18 +691,18 @@
 
     searchForm.addEventListener("submit", () => {
       searchButton.disabled = true;
-      searchButton.textContent = "A pesquisar…";
-      showStatus("A pesquisar…");
+      searchButton.textContent = t("A pesquisar…");
+      showStatus(t("A pesquisar…"));
     });
 
     document.querySelectorAll(".pager a").forEach((link) => {
       link.addEventListener("click", () => {
-        showStatus("A carregar a página…");
+        showStatus(t("A carregar a página…"));
       });
     });
     document.querySelectorAll(".pager form").forEach((form) => {
       form.addEventListener("submit", () => {
-        showStatus("A carregar a página…");
+        showStatus(t("A carregar a página…"));
       });
     });
 
@@ -661,7 +711,7 @@
       const call = button.closest("tbody.call");
       const note = call.querySelector(".related-status");
       button.disabled = true;
-      if (note) note.textContent = "A procurar chamadas relacionadas…";
+      if (note) note.textContent = t("A procurar chamadas relacionadas…");
       try {
         const params = new URLSearchParams();
         params.set("cloud", cloudSelect.value);
@@ -714,7 +764,7 @@
       meta.className = "muted";
       meta.textContent = identity;
       const body = document.createElement("div");
-      body.textContent = "A ler…";
+      body.textContent = t("A ler…");
       panel.append(meta, body);
       try {
         const response = await fetch(
@@ -724,7 +774,7 @@
         body.innerHTML = await response.text();
         panel.dataset.loaded = "1";
       } catch (error) {
-        body.textContent = "Não foi possível ler a CDR deste cloud.";
+        body.textContent = t("Não foi possível ler a CDR deste cloud.");
       }
     });
   </script>

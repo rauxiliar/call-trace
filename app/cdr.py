@@ -12,6 +12,7 @@ from typing import Any, Protocol
 from app.config import Cloud, Settings
 from app.db import PAGE_SIZE, DomainTableMissing, InvalidDomain, LegFilters, checked_domain
 from app.grafana import as_utc, explore_url, loki_uid, logql
+from app.i18n import _
 from app.models import DetailsRow, Leg, VoipInfo
 from app.voipmonitor import display_voip
 
@@ -371,10 +372,13 @@ def _legs_from_details(
         if chosen is None:
             chosen = form_domain
         if not chosen:
-            _add_notice(notices, "O evento não tem um domínio válido; as pernas não foram lidas.")
+            _add_notice(
+                notices,
+                _("O evento não tem um domínio válido; as pernas não foram lidas."),
+            )
             continue
         if not call_uuid:
-            _add_notice(notices, "O evento não inclui Channel-Call-UUID.")
+            _add_notice(notices, _("O evento não inclui Channel-Call-UUID."))
             continue
         key = (chosen, call_uuid)
         if key in seen:
@@ -387,7 +391,10 @@ def _legs_from_details(
         try:
             legs.extend(_by_call_uuid(repo, domain, call_uuid, filters))
         except DomainTableMissing:
-            _add_notice(notices, f"A tabela do domínio {domain} não existe neste cloud.")
+            _add_notice(
+                notices,
+                _("A tabela do domínio {domain} não existe neste cloud.").format(domain=domain),
+            )
     return legs
 
 
@@ -401,7 +408,10 @@ def _legs_from_domain(
     try:
         matched = _by_any_id(repo, domain, search_id, filters)
     except DomainTableMissing:
-        _add_notice(notices, f"A tabela do domínio {domain} não existe neste cloud.")
+        _add_notice(
+            notices,
+            _("A tabela do domínio {domain} não existe neste cloud.").format(domain=domain),
+        )
         return []
     call_uuids: list[str] = []
     seen: set[str] = set()
@@ -416,7 +426,10 @@ def _legs_from_domain(
         try:
             expanded.extend(_by_call_uuid(repo, domain, call_uuid, filters))
         except DomainTableMissing:
-            _add_notice(notices, f"A tabela do domínio {domain} não existe neste cloud.")
+            _add_notice(
+                notices,
+                _("A tabela do domínio {domain} não existe neste cloud.").format(domain=domain),
+            )
     return expanded or matched
 
 
@@ -474,7 +487,7 @@ def _window_for(
         return call_span
     _add_notice(
         notices,
-        "Sem carimbos na CDR; a janela VoIPmonitor foi alargada para 7 dias.",
+        _("Sem carimbos na CDR; a janela VoIPmonitor foi alargada para 7 dias."),
     )
     return now - SEVEN_DAYS, now
 
@@ -558,7 +571,7 @@ def _build_calls(
             call_span = (now - SEVEN_DAYS, now)
             _add_notice(
                 notices,
-                "Sem carimbos na CDR; a janela de logs e do VoIPmonitor foi alargada para 7 dias.",
+                _("Sem carimbos na CDR; a janela de logs e do VoIPmonitor foi alargada para 7 dias."),
             )
         logs_url = _logs_link(settings, cloud, call_uuid, call_span[0], call_span[1], cloud.timezone)
         leg_views: list[LegView] = []
@@ -679,7 +692,12 @@ def related(
     try:
         seed_legs = repo.fetch_legs_by_call_uuid(form_domain, seed_id)
     except DomainTableMissing:
-        _add_notice(notices, f"A tabela do domínio {form_domain} não existe neste cloud.")
+        _add_notice(
+            notices,
+            _("A tabela do domínio {domain} não existe neste cloud.").format(
+                domain=form_domain
+            ),
+        )
         return SearchOutcome(notices=notices)
     seed_uuids = {leg.uuid.lower() for leg in seed_legs}
     seed_uuids.add(seed_id.lower())
@@ -700,7 +718,12 @@ def related(
         try:
             matched = repo.fetch_legs_by_any_id(leg_domain, leg_uuid)
         except DomainTableMissing:
-            _add_notice(notices, f"A tabela do domínio {leg_domain} não existe neste cloud.")
+            _add_notice(
+                notices,
+                _("A tabela do domínio {domain} não existe neste cloud.").format(
+                    domain=leg_domain
+                ),
+            )
             return
         chosen = next((leg for leg in matched if leg.uuid.lower() == leg_uuid.lower()), None)
         if chosen is None or chosen.uuid.lower() in seed_uuids or chosen.uuid.lower() in found_ids:
@@ -727,7 +750,7 @@ def related(
 
     legs = _dedupe(found)
     if not legs:
-        _add_notice(notices, "Sem chamadas relacionadas.")
+        _add_notice(notices, _("Sem chamadas relacionadas."))
         return SearchOutcome(notices=notices)
     calls = _build_calls(legs, cloud, settings, voip, moment, notices)
     return SearchOutcome(notices=notices, calls=calls)
@@ -760,7 +783,7 @@ def correlate(
 
     legs = _dedupe(legs)
     if not legs:
-        _add_notice(notices, "Nenhuma perna encontrada.")
+        _add_notice(notices, _("Nenhuma perna encontrada."))
         return SearchOutcome(notices=notices)
 
     calls = _build_calls(legs, cloud, settings, voip, moment, notices)
@@ -793,17 +816,22 @@ def browse(
         total = repo.count_legs(form_domain, narrowed, recent_cap)
         matched, _more = repo.fetch_legs_matching(form_domain, narrowed, PAGE_SIZE, offset)
     except DomainTableMissing:
-        _add_notice(notices, f"A tabela do domínio {form_domain} não existe neste cloud.")
+        _add_notice(
+            notices,
+            _("A tabela do domínio {domain} não existe neste cloud.").format(
+                domain=form_domain
+            ),
+        )
         return SearchOutcome(notices=notices, page=page, has_prev=page > 1)
     page_count = min(MAX_PAGE, (total + PAGE_SIZE - 1) // PAGE_SIZE) if total else 0
     pages_capped = total > MAX_PAGE * PAGE_SIZE
     has_next = page < page_count
     if pages_capped and page == MAX_PAGE:
-        _add_notice(notices, "Afina o intervalo ou os filtros.")
+        _add_notice(notices, _("Afina o intervalo ou os filtros."))
 
     legs = _dedupe(matched)
     if not legs:
-        _add_notice(notices, "Nenhuma perna encontrada.")
+        _add_notice(notices, _("Nenhuma perna encontrada."))
         return SearchOutcome(
             notices=notices,
             page=page,

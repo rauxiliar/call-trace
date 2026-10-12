@@ -1,12 +1,12 @@
-# Correlação CDR
+# CDR Correlation
 
-Página interna, só de leitura, que junta a CDR do FreeSWITCH de um cloud com o VoIPmonitor e abre os logs no Grafana Explore.
+Internal read-only page that joins one cloud's FreeSWITCH CDR with VoIPmonitor and opens logs in Grafana Explore.
 
-Não escreve nas bases, não altera o esquema `cdrs` e não desenha a escada SIP nem um player. O cloud é sempre o que estiver escolhido no formulário.
+It does not write to the databases, does not change the `cdrs` schema, and does not draw a SIP ladder or a player. The cloud is always the one chosen in the form.
 
-## Configuração
+## Configuration
 
-Segredos ficam no servidor.
+Secrets stay on the server.
 
 ```bash
 python3 -m venv .venv
@@ -16,27 +16,27 @@ cp .env.example .env
 cp config/clouds.example.yaml config/clouds.yaml
 ```
 
-`.env` tem `VOIPMONITOR_USER`, `VOIPMONITOR_PASSWORD`, `CF_ACCESS_CLIENT_ID` e `CF_ACCESS_CLIENT_SECRET`. São o utilizador local da GUI e o service token do Cloudflare Access. Não vão para o browser.
+`.env` has `VOIPMONITOR_USER`, `VOIPMONITOR_PASSWORD`, `CF_ACCESS_CLIENT_ID`, and `CF_ACCESS_CLIENT_SECRET`. Those are the local GUI user and the Cloudflare Access service token. They never reach the browser.
 
-`config/clouds.yaml` (gitignored) lista cada cloud com `id`, `region` (`us` ou `eu`), `namespace`, `timezone` (nome IANA do relógio da CDR, por exemplo `America/Chicago`), `dsn` da base das CDRs e `domains_dsn` da base dos domínios (`public.v_domains`). A página filtra e mostra as horas nessa timezone. O VoIPmonitor continua em `America/Los_Angeles`. As duas ligações abrem com `default_transaction_read_only=on`. Se o host for o mesmo, partilham o túnel SSH.
+`config/clouds.yaml` (gitignored) lists each cloud with `id`, `region` (`us` or `eu`), `namespace`, `timezone` (IANA name of the CDR clock, for example `America/Chicago`), `dsn` for the CDR database, and `domains_dsn` for the domains database (`public.v_domains`). The page filters and shows times in that timezone. VoIPmonitor stays on `America/Los_Angeles`. Both connections open with `default_transaction_read_only=on`. If the host is the same, they share the SSH tunnel.
 
-Na cloud, o `dsn` aponta diretamente ao Postgres. No laptop, o mesmo, quando a rede chega à base. Se a base só for alcançável por uma máquina intermédia, acrescenta `ssh: user@bastion` nesse cloud e uma de duas: `ssh_key` com o caminho da chave privada, ou `ssh_password`. A password fica no processo do `ssh` e não aparece na linha de comandos. Sem `ssh_password`, a app usa a chave, o agent ou o `~/.ssh/config`. Sem a linha `ssh`, não há túnel. O VoIPmonitor continua a sair por HTTPS.
+On the cloud, `dsn` points straight at Postgres. On a laptop, the same, when the network can reach the database. If the database is only reachable through a jump host, add `ssh: user@bastion` on that cloud and one of: `ssh_key` with the private key path, or `ssh_password`. The password stays in the `ssh` process and does not appear on the command line. Without `ssh_password`, the app uses the key, the agent, or `~/.ssh/config`. Without an `ssh` line, there is no tunnel. VoIPmonitor still goes out over HTTPS.
 
-`region: us` usa o Loki-US. `region: eu` usa o Loki-EU. O link Logs abre `{namespace="..."}` quando o namespace existe, e outra query `{cloud="<id>"}`. As duas não vão no mesmo seletor.
+`region: us` uses Loki-US. `region: eu` uses Loki-EU. The Logs link opens `{namespace="..."}` when the namespace exists, and another query `{cloud="<id>"}`. The two do not go in the same selector.
 
-## Arranque
+## Start
 
 ```bash
 uvicorn app.main:app --host 127.0.0.1 --port 8080
 ```
 
-O formulário pede o cloud. O domínio vem da lista dessa cloud, começa vazio e é obrigatório para pesquisar. O identificador (call UUID ou SIP Call-ID) continua opcional. Sem ele, um intervalo até 24 horas restringe a pesquisa. Sem intervalo, a página mostra as pernas mais recentes, 25 de cada vez, até 20 páginas. Direção e hangup cause são listas. Origem e destino afinam a leitura.
+The form asks for the cloud. The domain comes from that cloud's list, starts empty, and is required to search. The identifier (call UUID or SIP Call-ID) stays optional. Without it, a window of up to 24 hours restricts the search. Without a window, the page shows the most recent legs, 25 at a time, up to 20 pages. Direction and hangup cause are lists. Caller and callee refine the read.
 
-## Login interno
+## Internal login
 
-Este repositório não tem sessão web. A rota depende de `require_internal_user` em [`app/auth.py`](app/auth.py). Quando existir um login interno, é aí que se aplica. Não está previsto um SSO novo.
+This repository has no web session. The route depends on `require_internal_user` in [`app/auth.py`](app/auth.py). When an internal login exists, that is where it applies. A new SSO is not planned.
 
-## Testes
+## Tests
 
 ```bash
 pytest

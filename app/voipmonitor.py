@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 
 from app.config import Settings
+from app.i18n import _
 from app.models import VoipInfo
 
 VOIPMONITOR_ZONE = ZoneInfo("America/Los_Angeles")
@@ -166,10 +167,10 @@ class VoipMonitor:
 
     def _call(self, task: str, params: dict[str, Any]) -> dict[str, Any]:
         if task not in ALLOWED_TASKS:
-            return {"error": f"Task {task} is not allowed."}
+            return {"error": _("A tarefa {task} não é permitida.").format(task=task)}
         if not self._user or not self._password:
             return {
-                "error": (
+                "error": _(
                     "VOIPMONITOR_USER e VOIPMONITOR_PASSWORD têm de estar definidos no servidor."
                 )
             }
@@ -201,20 +202,26 @@ class VoipMonitor:
                     timeout=30.0,
                 )
         except httpx.HTTPError as exc:
-            return {"error": f"Pedido ao VoIPmonitor falhou: {exc.__class__.__name__}."}
+            return {
+                "error": _("Pedido ao VoIPmonitor falhou: {name}.").format(
+                    name=exc.__class__.__name__
+                )
+            }
 
         content_type = response.headers.get("content-type", "")
         text = response.text
         if _looks_like_html(text, content_type):
             return {
-                "error": (
+                "error": _(
                     "O Cloudflare Access bloqueou o pedido. "
                     "Confirma CF_ACCESS_CLIENT_ID e CF_ACCESS_CLIENT_SECRET no servidor."
                 )
             }
         if response.status_code >= 400:
             return {
-                "error": f"A API VoIPmonitor devolveu HTTP {response.status_code}.",
+                "error": _("A API VoIPmonitor devolveu HTTP {status}.").format(
+                    status=response.status_code
+                ),
                 "body": self._redact(text),
             }
         try:
@@ -223,7 +230,10 @@ class VoipMonitor:
             stripped = text.strip()
             if stripped.startswith(("http://", "https://")):
                 return {"url": stripped}
-            return {"error": "A API VoIPmonitor não devolveu JSON.", "body": self._redact(stripped)}
+            return {
+                "error": _("A API VoIPmonitor não devolveu JSON."),
+                "body": self._redact(stripped),
+            }
         if isinstance(payload, dict):
             return payload
         if isinstance(payload, list):

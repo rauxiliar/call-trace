@@ -202,3 +202,49 @@ def test_stamps_render_in_the_cloud_timezone():
     page = client.get("/", params={"cloud": "example-us", "domain": "tenant.example", "q": CALL}).text
     assert "2026-07-01 07:00:00 UTC-05:00" in page
     assert "0.0 s" in page
+
+
+def test_page_defaults_to_portuguese():
+    client, _settings = _page(MemoryRepo([], []))
+    page = client.get("/")
+    assert page.status_code == 200
+    assert 'lang="pt"' in page.text
+    assert "Correlação CDR" in page.text
+    assert 'value="pt-PT"' in page.text
+    assert 'value="en-US"' in page.text
+    assert ">PT-PT<" in page.text
+    assert ">EN-US<" in page.text
+
+
+def test_lang_route_sets_cookie_and_redirects():
+    client, _settings = _page(MemoryRepo([], []))
+    response = client.get(
+        "/lang?set=en-US",
+        headers={"Referer": "http://testserver/?cloud=example-us"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert response.headers["location"] == "/?cloud=example-us"
+    assert response.cookies.get("lang") == "en-US"
+    page = client.get("/?cloud=example-us")
+    assert "CDR Correlation" in page.text
+    assert 'lang="en"' in page.text
+
+
+def test_english_via_cookie():
+    client, _settings = _page(MemoryRepo([], []))
+    client.cookies.set("lang", "en-US")
+    page = client.get("/")
+    assert page.status_code == 200
+    assert 'lang="en"' in page.text
+    assert "CDR Correlation" in page.text
+    assert "Choose a cloud to see the timezone." in page.text
+    assert "Search" in page.text
+
+
+def test_english_via_accept_language():
+    client, _settings = _page(MemoryRepo([], []))
+    page = client.get("/", headers={"Accept-Language": "en-US,en;q=0.9"})
+    assert page.status_code == 200
+    assert 'lang="en"' in page.text
+    assert "CDR Correlation" in page.text

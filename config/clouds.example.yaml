@@ -17,10 +17,10 @@ clouds:
     dsn: postgres://calltrace_ro:CHANGE_ME@10.1.2.3:5432/cdrs
     domains_dsn: postgres://calltrace_ro:CHANGE_ME@10.1.2.3:5432/fusionpbx
     ssh: rauxiliar@us-gocontact-mt-f0-vpn.finesource.org
-    # Uma das duas. A password não vai para o browser nem para a linha de comandos.
+    # One of the two. The password never goes to the browser or the command line.
     # ssh_key: ~/.ssh/id_ed25519
     # ssh_password: CHANGE_ME
-    # Só no laptop, se o Postgres não for direto. Na cloud, apagar estas linhas.
+    # Laptop only, when Postgres is not direct. On the cloud, remove these lines.
     # ssh: user@bastion.example
   - id: example-eu-vm
     region: eu
